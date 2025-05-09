@@ -24,3 +24,303 @@
         <pre class="cmp-helloworld__item-output"data-cmp-hook-helloworld="model">${model.message}</pre>
     </div>
 </div>
+
+<!--/*
+     validation Implementation for two nested multifields in an AEM dialog using JavaScript. 
+     The outer multifield enforces a minimum of 1 and maximum of 2 items, while the inner (nested) multifield allows a minimum of 1 and maximum of 8 items. 
+     These constraints are handled through custom JS validators registered using foundation.validation.validator, 
+     ensuring dynamic enable/disable of Add/Remove buttons and appropriate warning messages based on user input.
+*/-->
+
+<script>    
+// Nested Multifield Validation (min 1, max 8)
+$(window).adaptTo("foundation-registry").register("foundation.validation.validator", {
+  selector: "[data-foundation-validation='nestedmultifield-min-1-max-8']",
+  validate: function (el) {
+    const min = 1;
+    const max = 8;
+    const items = el.querySelectorAll(":scope > coral-multifield-item").length;
+    const coralAddButtons = el.querySelectorAll('button[coral-multifield-add]');
+    const firstAddButton = coralAddButtons[0];
+    const removeButtons = el.querySelectorAll('button[coral-multifield-remove]');
+    const dialog = el.closest(".cq-dialog");
+
+    let warningMessage = el.querySelector(".nested-multifield-warning-message");
+    if (!warningMessage) {
+      warningMessage = document.createElement("div");
+      warningMessage.className = "nested-multifield-warning-message";
+      warningMessage.style.color = "red";
+      warningMessage.style.fontSize = "12px";
+      warningMessage.style.marginTop = "5px";
+      el.appendChild(warningMessage);
+    }
+
+    // Handle min validation - only disable if this is the last item in THIS multifield
+    removeButtons.forEach(button => {
+      const item = button.closest('coral-multifield-item');
+      if (item && item.parentElement === el) {
+        button.disabled = items <= min;
+      }
+    });
+
+    // Handle max validation
+    if (items >= max) {
+      firstAddButton.disabled = true;
+      warningMessage.textContent = "⚠️ Maximum limit of 8 reached!";
+    } else if (items < min) {
+      warningMessage.textContent = "⚠️ Minimum of 1 item required!";
+    } else {
+      firstAddButton.disabled = false;
+      warningMessage.textContent = "";
+    }
+
+    return items < min ? "Minimum of 1 item required!" : null;
+  }
+});
+
+// Outer Multifield Validation (min 1, max 2)
+$(window).adaptTo("foundation-registry").register("foundation.validation.validator", {
+  selector: "[data-foundation-validation='multifield-min-1-max-2']",
+  validate: function(el) {
+    const min = 1;
+    const max = 2;
+    const items = el.querySelectorAll(":scope > coral-multifield-item").length;
+    const addButtons = el.querySelectorAll('button[coral-multifield-add]');
+    const lastAddButton = addButtons[addButtons.length - 1];
+    const removeButtons = el.querySelectorAll('button[coral-multifield-remove]');
+    const dialog = el.closest(".cq-dialog");
+
+    let warningMessage = el.parentNode.querySelector(".multifield-limit-message");
+    if (!warningMessage) {
+      warningMessage = document.createElement("div");
+      warningMessage.className = "multifield-limit-message";
+      warningMessage.style.color = "#C0392B";
+      warningMessage.style.fontSize = "14px";
+      warningMessage.style.margin = "10px 0";
+      warningMessage.style.fontWeight = "bold";
+      el.parentNode.insertBefore(warningMessage, el.nextSibling);
+    }
+
+    // Handle min validation - only disable if this is the last item in THIS multifield
+    removeButtons.forEach(button => {
+      const item = button.closest('coral-multifield-item');
+      if (item && item.parentElement === el) {
+        button.disabled = items <= min;
+      }
+    });
+
+    // Handle max validation
+    if (items >= max) {
+      if (lastAddButton) lastAddButton.disabled = true;
+      warningMessage.textContent = "Maximum limit of 2 items reached!";
+    } else if (items < min) {
+      warningMessage.textContent = "Minimum of 1 item required!";
+    } else {
+      warningMessage.textContent = "";
+      if (lastAddButton) lastAddButton.disabled = false;
+    }
+
+    return items < min ? "Minimum of 1 item required!" : null;
+  }
+});
+
+// Global validation for Done button
+$(window).adaptTo("foundation-registry").register("foundation.validation.validator", {
+  selector: "[data-foundation-validation='mega-menu-dialog']",
+  validate: function(el) {
+    const dialog = el.closest(".cq-dialog");
+    if (!dialog) return null;
+    
+    const coralDoneButton = dialog.querySelector("button[title='Done']");
+    if (!coralDoneButton) return null;
+    
+    // Check all outer multifields
+    const outerMultifields = dialog.querySelectorAll("[data-foundation-validation='multifield-min-1-max-2']");
+    let outerValid = true;
+    
+    outerMultifields.forEach(mf => {
+      const items = mf.querySelectorAll(":scope > coral-multifield-item").length;
+      if (items < 1) outerValid = false;
+    });
+    
+    // Check all inner multifields
+    const innerMultifields = dialog.querySelectorAll("[data-foundation-validation='nestedmultifield-min-1-max-8']");
+    let innerValid = true;
+    
+    innerMultifields.forEach(mf => {
+      const items = mf.querySelectorAll(":scope > coral-multifield-item").length;
+      if (items < 1) innerValid = false;
+    });
+    
+    // Disable Done button if any validation fails
+    coralDoneButton.disabled = !(outerValid && innerValid);
+    
+    return null;
+  }
+});
+
+// Initialize validation when dialog opens
+$(document).on('dialog-ready', function() {
+  // Initialize nested multifields
+  document.querySelectorAll("[data-foundation-validation='nestedmultifield-min-1-max-8']").forEach(function(el) {
+    const min = 1;
+    const max = 8;
+    const items = el.querySelectorAll(":scope > coral-multifield-item").length;
+    const coralAddButtons = el.querySelectorAll('button[coral-multifield-add]');
+    const firstAddButton = coralAddButtons[0];
+    const removeButtons = el.querySelectorAll('button[coral-multifield-remove]');
+
+    let warningMessage = el.querySelector(".nested-multifield-warning-message");
+    if (!warningMessage) {
+      warningMessage = document.createElement("div");
+      warningMessage.className = "nested-multifield-warning-message";
+      warningMessage.style.color = "red";
+      warningMessage.style.fontSize = "12px";
+      warningMessage.style.marginTop = "5px";
+      el.appendChild(warningMessage);
+    }
+
+    removeButtons.forEach(button => {
+      const item = button.closest('coral-multifield-item');
+      if (item && item.parentElement === el) {
+        button.disabled = items <= min;
+      }
+    });
+
+    if (items >= max) {
+      firstAddButton.disabled = true;
+      warningMessage.textContent = "⚠️ Maximum limit of 8 reached!";
+    } else if (items < min) {
+      warningMessage.textContent = "⚠️ Minimum of 1 item required!";
+    }
+  });
+  
+  // Initialize outer multifields
+  document.querySelectorAll("[data-foundation-validation='multifield-min-1-max-2']").forEach(function(el) {
+    const min = 1;
+    const max = 2;
+    const items = el.querySelectorAll(":scope > coral-multifield-item").length;
+    const addButtons = el.querySelectorAll('button[coral-multifield-add]');
+    const lastAddButton = addButtons[addButtons.length - 1];
+    const removeButtons = el.querySelectorAll('button[coral-multifield-remove]');
+    
+    let warningMessage = el.parentNode.querySelector(".multifield-limit-message");
+    if (!warningMessage) {
+      warningMessage = document.createElement("div");
+      warningMessage.className = "multifield-limit-message";
+      warningMessage.style.color = "#C0392B";
+      warningMessage.style.fontSize = "14px";
+      warningMessage.style.margin = "10px 0";
+      warningMessage.style.fontWeight = "bold";
+      el.parentNode.insertBefore(warningMessage, el.nextSibling);
+    }
+
+    removeButtons.forEach(button => {
+      const item = button.closest('coral-multifield-item');
+      if (item && item.parentElement === el) {
+        button.disabled = items <= min;
+      }
+    });
+
+    if (items >= max) {
+      if (lastAddButton) lastAddButton.disabled = true;
+      warningMessage.textContent = "Maximum limit of 2 items reached!";
+    } else if (items < min) {
+      warningMessage.textContent = "Minimum of 1 item required!";
+    }
+  });
+});
+
+// Handle add/remove events for nested multifields
+$(document).on('coral-multifield:add coral-multifield:remove', '[data-foundation-validation="nestedmultifield-min-1-max-8"]', function(e) {
+  const multifield = e.target;
+  const min = 1;
+  const max = 8;
+  const items = multifield.querySelectorAll(":scope > coral-multifield-item").length;
+  const coralAddButtons = multifield.querySelectorAll('button[coral-multifield-add]');
+  const firstAddButton = coralAddButtons[0];
+  const removeButtons = multifield.querySelectorAll('button[coral-multifield-remove]');
+  const dialog = multifield.closest(".cq-dialog");
+
+  removeButtons.forEach(button => {
+    const item = button.closest('coral-multifield-item');
+    if (item && item.parentElement === multifield) {
+      button.disabled = items <= min;
+    }
+  });
+
+  if (items >= max) {
+    firstAddButton.disabled = true;
+    const warningMessage = multifield.querySelector(".nested-multifield-warning-message");
+    if (warningMessage) {
+      warningMessage.textContent = "⚠️ Maximum limit of 8 reached!";
+    }
+  } else {
+    firstAddButton.disabled = false;
+    const warningMessage = multifield.querySelector(".nested-multifield-warning-message");
+    if (warningMessage) {
+      warningMessage.textContent = items < min ? "⚠️ Minimum of 1 item required!" : "";
+    }
+  }
+});
+
+// Handle add/remove events for outer multifields
+$(document).on('coral-multifield:add coral-multifield:remove', '[data-foundation-validation="multifield-min-1-max-2"]', function(e) {
+  const multifield = e.target;
+  const min = 1;
+  const max = 2;
+  const items = multifield.querySelectorAll(":scope > coral-multifield-item").length;
+  const addButtons = multifield.querySelectorAll('button[coral-multifield-add]');
+  const lastAddButton = addButtons[addButtons.length - 1];
+  const removeButtons = multifield.querySelectorAll('button[coral-multifield-remove]');
+  const dialog = multifield.closest(".cq-dialog");
+  const warningMessage = multifield.parentNode.querySelector(".multifield-limit-message");
+
+  removeButtons.forEach(button => {
+    const item = button.closest('coral-multifield-item');
+    if (item && item.parentElement === multifield) {
+      button.disabled = items <= min;
+    }
+  });
+
+  if (items >= max) {
+    if (lastAddButton) lastAddButton.disabled = true;
+    if (warningMessage) warningMessage.textContent = "Maximum limit of 2 items reached!";
+  } else {
+    if (lastAddButton) lastAddButton.disabled = false;
+    if (warningMessage) {
+      warningMessage.textContent = items < min ? "Minimum of 1 item required!" : "";
+    }
+  }
+});
+
+// Global event handler for Done button validation
+$(document).on('coral-multifield:add coral-multifield:remove', function(e) {
+  const dialog = e.target.closest(".cq-dialog");
+  if (!dialog) return;
+  
+  const coralDoneButton = dialog.querySelector("button[title='Done']");
+  if (!coralDoneButton) return;
+  
+  // Check all outer multifields
+  const outerMultifields = dialog.querySelectorAll("[data-foundation-validation='multifield-min-1-max-2']");
+  let outerValid = true;
+  
+  outerMultifields.forEach(mf => {
+    const items = mf.querySelectorAll(":scope > coral-multifield-item").length;
+    if (items < 1) outerValid = false;
+  });
+  
+  // Check all inner multifields
+  const innerMultifields = dialog.querySelectorAll("[data-foundation-validation='nestedmultifield-min-1-max-8']");
+  let innerValid = true;
+  
+  innerMultifields.forEach(mf => {
+    const items = mf.querySelectorAll(":scope > coral-multifield-item").length;
+    if (items < 1) innerValid = false;
+  });
+  
+  // Update Done button state
+  coralDoneButton.disabled = !(outerValid && innerValid);
+});
+</script>
